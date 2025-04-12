@@ -4,18 +4,25 @@ type Node struct {
 	label    int
 	parent   *Node      // directs to non-blossom node
 	children []*Node    // directs to non-blossom node
-	blossom  *Node      // immediate blossom that contains this node (nil if the node is the outermost blossom)
 	cycle    [][2]*Node // cyclic pair of nodes (start, end)
-	dval     float64
 	temp     int64
+
+	//blossom *Node // immediate blossom that contains this node (nil if the node is the outermost blossom)
+	//dval    float64
+
+	// for lct, maintain a blossom forest
+	p, pp *Node    // blossom parent
+	ch    [2]*Node // child left, right
+	z, sz float64  // node's z value and blossom tree sum z value
 }
 
 // returns the outermost blossom
 func (n *Node) Blossom() *Node {
-	if n.blossom == nil {
-		return n
-	}
-	return n.blossom.Blossom()
+	return n.findRoot()
+	//if n.blossom == nil {
+	//	return n
+	//}
+	//return n.blossom.Blossom()
 }
 
 func (n *Node) Root() *Node {
@@ -77,19 +84,20 @@ func (n *Node) All() []*Node {
 }
 
 func (n *Node) BlossomWithin(b *Node) *Node {
-	for n.blossom != b {
-		n = n.blossom
+	var x = n
+	for x.pp != b {
+		x = x.pp
 	}
-	if n.blossom == nil {
+	if x.pp == nil {
 		panic("invalid search for blossom within")
 	}
-	return n
+	return x
 }
 
 func (n *Node) RemoveParent() {
-	for n.blossom != nil {
-		n.parent = nil
-		n = n.blossom
+	for x := n; x.pp != nil; {
+		x.parent = nil
+		x = x.pp
 	}
 }
 
@@ -110,17 +118,17 @@ func (n *Node) SetAlone() {
 }
 
 // set the blossom (or nodes) as a free node
-func (b *Node) SetFree() {
+func (n *Node) SetFree() {
 	// fmt.Printf("set free %d (%v)\n", b.temp, b)
-	b.label = 0
-	b.SetAlone()
-	for _, c := range b.cycle {
-		c[0].BlossomWithin(b).SetFree()
+	n.label = 0
+	n.SetAlone()
+	for _, c := range n.cycle {
+		c[0].BlossomWithin(n).SetFree()
 	}
 }
 
 func (n *Node) Update(delta float64) {
-	n.dval += float64(n.label) * delta
+	n.setZ(n.z + float64(n.label)*delta)
 	for _, c := range n.cycle {
 		cb := c[0].BlossomWithin(n)
 		cb.Update(delta)

@@ -1,26 +1,21 @@
 package mwpm
 
-import (
-	"gonum.org/v1/gonum/graph"
-)
-
 type Tree struct {
-	g     graph.Weighted
+	g     *WeightedGraph
 	roots map[*Node]struct{}
-	nodes map[int64]*Node
+	nodes []*Node
 	tight map[*Node]*Node
 }
 
-func NewTree(wg graph.Weighted) *Tree {
+func NewTree(wg *WeightedGraph) *Tree {
 	t := &Tree{
 		g:     wg,
 		roots: make(map[*Node]struct{}),
-		nodes: make(map[int64]*Node),
+		nodes: make([]*Node, wg.N()),
 		tight: make(map[*Node]*Node),
 	}
-	nodes := wg.Nodes()
-	for nodes.Next() {
-		nid := nodes.Node().ID()
+	for i := int64(0); i < int64(wg.N()); i++ {
+		nid := i
 		n := &Node{label: 1}
 		n.temp = nid
 		t.nodes[nid] = n
@@ -86,8 +81,8 @@ func (t *Tree) SetTight(s [2]*Node, b *Node) {
 	// fmt.Printf("setting tight edge %d:%d\n", s[0].temp, s[1].temp)
 	t.tight[s[0]], t.tight[s[1]] = s[1], s[0]
 	for _, l := range s {
-		for l.blossom != b {
-			lb := l.blossom
+		for l.pp != b {
+			lb := l.pp
 			for i, c := range lb.cycle {
 				if c[0].BlossomWithin(lb) == l.BlossomWithin(lb) {
 					lb.cycle = append(lb.cycle[i:], lb.cycle[:i]...)
@@ -97,7 +92,7 @@ func (t *Tree) SetTight(s [2]*Node, b *Node) {
 			for i := 1; i < len(lb.cycle); i += 2 {
 				t.SetTight(lb.cycle[i], lb)
 			}
-			l = l.blossom
+			l = l.pp
 		}
 	}
 }
@@ -127,7 +122,7 @@ func (t *Tree) RemoveTight(s [2]*Node) {
 func (t *Tree) RemoveTightWithin(b *Node) {
 	for _, c := range b.cycle {
 		for _, u := range c {
-			if u.BlossomWithin(b).blossom == b {
+			if u.BlossomWithin(b).pp == b {
 				delete(t.tight, u)
 			}
 		}

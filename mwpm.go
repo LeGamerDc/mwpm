@@ -4,24 +4,28 @@ import (
 	"math"
 	"math/rand"
 	"sort"
-
-	"gonum.org/v1/gonum/graph"
 )
 
 // The code takes a weighted undirected graph as input
 // and returns a set of perfect matchings that minimizes the sum of weights.
 // It is based on Komologov's Blossom V algorithm.
 // (We used "multiple trees, constant delta" approach.)
-func Run(g graph.Weighted) ([][2]int64, bool) {
-	num := g.Nodes().Len()
+func Run(g *WeightedGraph, cb func(int64)) ([][2]int64, bool) {
+	num := g.N()
 	if num%2 == 1 {
 		return nil, false
 	}
 	t := NewTree(g)
+	lm, cm := 0, 0
 	for {
-		if len(t.tight) == num {
+		if cm = len(t.tight); cm == num {
 			break
 		}
+		if cm > lm {
+			cb(int64(cm))
+			lm = cm
+		}
+
 		c, s := t.Dual()
 		switch c {
 		case -1:
@@ -38,7 +42,7 @@ func Run(g graph.Weighted) ([][2]int64, bool) {
 	}
 	inv := make(map[*Node]int64)
 	for id, n := range t.nodes {
-		inv[n] = id
+		inv[n] = int64(id)
 	}
 	var match [][2]int64
 	for n, m := range t.tight {
@@ -60,10 +64,12 @@ func (t *Tree) Dual() (int, [2]*Node) {
 	var c int = -1
 	var s, y [2]*Node
 	for i, n := range t.nodes {
+		i := int64(i)
 		nb := n.Blossom()
-		for j, m := range t.nodes {
+		for j, _ := range t.g.Connect(i) {
+			m := t.nodes[j]
 			mb := m.Blossom()
-			if i >= j || !t.g.HasEdgeBetween(i, j) || nb == mb {
+			if nb == mb {
 				continue
 			}
 			slack := t.Slack([2]int64{i, j})
@@ -88,8 +94,8 @@ func (t *Tree) Dual() (int, [2]*Node) {
 				return c, s
 			}
 		}
-		if nb.label < 0 && (dval > nb.dval) { // EXPAND
-			dval = nb.dval
+		if nb.label < 0 && (dval > nb.z) { // EXPAND
+			dval = nb.z
 			y = [2]*Node{n, nil}
 		}
 	}
@@ -114,10 +120,7 @@ func (t *Tree) Slack(ids [2]int64) float64 {
 	s, _ := t.g.Weight(ids[0], ids[1])
 	for _, id := range ids {
 		n := t.nodes[id]
-		for n != nil {
-			s -= n.dval
-			n = n.blossom
-		}
+		s -= n.getSz()
 	}
 	return s
 }
@@ -192,9 +195,13 @@ func (t *Tree) Shrink(s [2]*Node) {
 	b.parent = b.cycle[0][0].Blossom().parent
 	for _, c := range b.cycle {
 		cb := c[0].Blossom()
-		b.dval += float64(cb.label) * cb.dval
+		b.setZ(b.z + float64(cb.label)*cb.z)
 		b.children = append(b.children, cb.children...)
-		cb.blossom = b
+		cb.link(b)
+
+		//b.dval += float64(cb.label) * cb.dval
+		//b.children = append(b.children, cb.children...)
+		//cb.blossom = b
 	}
 }
 
@@ -215,7 +222,8 @@ func (t *Tree) Expand(n *Node) {
 	b := n.Blossom()
 	for _, c := range b.cycle {
 		sb := c[0].BlossomWithin(b)
-		sb.blossom = nil
+		sb.cut()
+		//sb.blossom = nil
 	}
 	/* reorder the cycle start from one that is connected to its parent */
 	u := b.parent
