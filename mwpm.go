@@ -12,6 +12,9 @@ import (
 // (We used "multiple trees, constant delta" approach.)
 func run(g *WeightedGraph, cb func(int64)) ([][2]int64, []int64) {
 	num := g.N()
+	if num%2 == 1 {
+		panic("odd number of nodes")
+	}
 	t := NewTree(g)
 	lm, cm := 0, 0
 	for {
