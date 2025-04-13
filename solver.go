@@ -2,7 +2,7 @@ package mwpm
 
 type SolverI interface {
 	AddEdge(x, y int64, w float64)
-	Solve(cb func(int64)) ([][2]int64, bool)
+	Solve(cb func(int64)) ([][2]int64, []int64)
 	N() int
 }
 
@@ -24,8 +24,8 @@ func (b *BaseSolver) AddEdge(x, y int64, w float64) {
 	b.wg.AddEdge(x, y, w)
 }
 
-func (b *BaseSolver) Solve(cb func(int64)) ([][2]int64, bool) {
-	return Run(b.wg, cb)
+func (b *BaseSolver) Solve(cb func(int64)) ([][2]int64, []int64) {
+	return run(b.wg, cb)
 }
 
 type MaxSolver struct {
@@ -48,7 +48,7 @@ func (m *MaxSolver) AddEdge(x, y int64, w float64) {
 	m.s.AddEdge(x, y, m.max-w)
 }
 
-func (m *MaxSolver) Solve(cb func(int64)) ([][2]int64, bool) {
+func (m *MaxSolver) Solve(cb func(int64)) ([][2]int64, []int64) {
 	return m.s.Solve(cb)
 }
 
@@ -82,10 +82,10 @@ func (e *EvaluateSolver) AddEdge(x, y int64, w float64) {
 	e.e[xy{x, y}] = w
 }
 
-func (e *EvaluateSolver) Solve(cb func(int64)) ([][2]int64, bool) {
-	pair, ok := e.s.Solve(cb)
-	if !ok {
-		return nil, false
+func (e *EvaluateSolver) Solve(cb func(int64)) (pair [][2]int64, rest []int64) {
+	pair, rest = e.s.Solve(cb)
+	if len(rest) > 0 {
+		return
 	}
 	for i := range pair {
 		x, y := pair[i][0], pair[i][1]
@@ -94,7 +94,7 @@ func (e *EvaluateSolver) Solve(cb func(int64)) ([][2]int64, bool) {
 		}
 		e.weighted += e.e[xy{x, y}]
 	}
-	return pair, true
+	return
 }
 
 func (e *EvaluateSolver) Weighted() float64 {

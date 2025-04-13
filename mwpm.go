@@ -10,11 +10,8 @@ import (
 // and returns a set of perfect matchings that minimizes the sum of weights.
 // It is based on Komologov's Blossom V algorithm.
 // (We used "multiple trees, constant delta" approach.)
-func Run(g *WeightedGraph, cb func(int64)) ([][2]int64, bool) {
+func run(g *WeightedGraph, cb func(int64)) ([][2]int64, []int64) {
 	num := g.N()
-	if num%2 == 1 {
-		return nil, false
-	}
 	t := NewTree(g)
 	lm, cm := 0, 0
 	for {
@@ -29,7 +26,7 @@ func Run(g *WeightedGraph, cb func(int64)) ([][2]int64, bool) {
 		c, s := t.Dual()
 		switch c {
 		case -1:
-			return nil, false
+			break
 		case 0:
 			t.Grow(s)
 		case 1:
@@ -44,17 +41,28 @@ func Run(g *WeightedGraph, cb func(int64)) ([][2]int64, bool) {
 	for id, n := range t.nodes {
 		inv[n] = int64(id)
 	}
-	var match [][2]int64
+	var (
+		match   [][2]int64
+		unmatch []int64
+		used    = make(map[int64]struct{}, g.N())
+	)
 	for n, m := range t.tight {
 		i, j := inv[n], inv[m]
 		if i < j {
-			match = append(match, [2]int64{inv[n], inv[m]})
+			match = append(match, [2]int64{i, j})
+			used[i] = struct{}{}
+			used[j] = struct{}{}
 		}
 	}
 	sort.Slice(match, func(i, j int) bool {
 		return match[i][0] < match[j][0]
 	})
-	return match, true
+	for i := int64(0); i < g.n; i++ {
+		if _, ok := used[i]; !ok {
+			unmatch = append(unmatch, i)
+		}
+	}
+	return match, unmatch
 }
 
 // Dual updates the Dual values of all blossoms according to their label.

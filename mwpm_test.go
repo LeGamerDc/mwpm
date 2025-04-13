@@ -24,7 +24,7 @@ func TestMWPM(t *testing.T) {
 		}
 	}
 	fmt.Println("----------------NEW----------------")
-	pair, _ := Run(wg, func(i int64) {})
+	pair, _ := run(wg, func(i int64) {})
 	fmt.Println(pair)
 }
 
@@ -34,7 +34,7 @@ func TestMWPM2(t *testing.T) {
 	wg.AddEdge(2, 3, 3)
 	wg.AddEdge(0, 2, 1)
 	wg.AddEdge(1, 3, 2)
-	pair, _ := Run(wg, func(i int64) {})
+	pair, _ := run(wg, func(i int64) {})
 	fmt.Println(pair)
 }
 
