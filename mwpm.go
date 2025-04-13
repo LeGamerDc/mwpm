@@ -17,6 +17,7 @@ func run(g *WeightedGraph, cb func(int64)) ([][2]int64, []int64) {
 	}
 	t := NewTree(g)
 	lm, cm := 0, 0
+Loop:
 	for {
 		if cm = len(t.tight); cm == num {
 			break
@@ -29,7 +30,7 @@ func run(g *WeightedGraph, cb func(int64)) ([][2]int64, []int64) {
 		c, s := t.Dual()
 		switch c {
 		case -1:
-			break
+			break Loop
 		case 0:
 			t.Grow(s)
 		case 1:
